@@ -21,7 +21,7 @@ bazel_dep(name = "googleapis-java", version = "1.0.0")
 bazel_dep(name = "googleapis", version = "0.0.0-20250604-de157ca3")
 bazel_dep(name = "googletest", version = "1.17.0.bcr.2", repo_name = "com_google_googletest")
 bazel_dep(name = "grpc-java", version = "1.71.0")
-bazel_dep(name = "grpc", version = "1.76.0.bcr.1", repo_name = "com_github_grpc_grpc")
+bazel_dep(name = "grpc", version = "1.74.1", repo_name = "com_github_grpc_grpc")
 bazel_dep(name = "platforms", version = "1.0.0")
 bazel_dep(name = "protobuf", version = "33.4", repo_name = "com_google_protobuf")
 bazel_dep(name = "re2", version = "2025-11-05.bcr.1")
@@ -115,6 +115,25 @@ single_version_override(
     patch_strip = 1,
     patches = ["//third_party:protobuf.patch"],
     version = "33.4",
+)
+
+# s390x: downgraded grpc from 1.76.0.bcr.1 to 1.74.1 to avoid repo_name=None bug.
+# s390x: patch boringssl (pulled in by grpc) to add s390x CPU detection.
+single_version_override(
+    module_name = "boringssl",
+    patch_strip = 1,
+    patches = ["//third_party:boringssl-s390x.patch"],
+)
+
+# s390x: patch grpc for gcc 13 strict implicit-includes (missing <algorithm> and <string>).
+single_version_override(
+    module_name = "grpc",
+    patch_strip = 1,
+    patches = [
+        "//third_party:grpc-glob-algorithm.patch",
+        "//third_party:grpc-memory-request-string.patch",
+    ],
+    version = "1.74.1",
 )
 
 # Remove once the following PRs are available in a grpc-java release.
