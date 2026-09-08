@@ -126,12 +126,14 @@ single_version_override(
 )
 
 # s390x: patch grpc for gcc 13 strict implicit-includes (missing <algorithm> and <string>).
+# s390x: patch grpc for Bazel 9.x native.cc_library removal.
 single_version_override(
     module_name = "grpc",
     patch_strip = 1,
     patches = [
         "//third_party:grpc-glob-algorithm.patch",
         "//third_party:grpc-memory-request-string.patch",
+        "//third_party:grpc-native-cc-library.patch",
     ],
     version = "1.74.1",
 )

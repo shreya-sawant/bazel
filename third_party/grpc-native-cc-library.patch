@@ -1,0 +1,20 @@
+diff --git a/bazel/cc_grpc_library.bzl b/bazel/cc_grpc_library.bzl
+--- a/bazel/cc_grpc_library.bzl
++++ b/bazel/cc_grpc_library.bzl
+@@ -17,6 +17,7 @@
+ load("@rules_proto//proto:defs.bzl", "proto_library")
+ load("//bazel:generate_cc.bzl", "generate_cc")
+ load("//bazel:protobuf.bzl", "well_known_proto_libs")
++load("@rules_cc//cc:defs.bzl", "cc_library")
+ 
+ def cc_grpc_library(
+         name,
+@@ -112,7 +113,7 @@
+             **kwargs
+         )
+ 
+-        native.cc_library(
++        cc_library(
+             name = name,
+             srcs = [":" + codegen_grpc_target],
+             hdrs = [":" + codegen_grpc_target],
