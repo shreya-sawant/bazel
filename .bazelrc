@@ -52,8 +52,9 @@ common:windows --define=protobuf_allow_msvc=true
 # version of the embedded JDK.
 common --java_language_version=21
 common --tool_java_language_version=21
-common --java_runtime_version=remotejdk_25
-common --tool_java_runtime_version=remotejdk_25
+# s390x: remotejdk_25 not available for s390x; use local JDK 25
+common --java_runtime_version=local_jdk
+common --tool_java_runtime_version=local_jdk
 # Reduce the amount of warnings shown due to the deprecation of most Unsafe
 # methods.
 # TODO: Remove this after migrating more code to use VarHandles.
