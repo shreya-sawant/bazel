@@ -1,0 +1,40 @@
+--- a/toolchains/BUILD
++++ b/toolchains/BUILD
+@@ -416,6 +416,30 @@ java_runtime_version_alias(
+     visibility = ["//visibility:public"],
+ )
+ 
++# s390x: no upstream JDK 25 binary exists for s390x; register @local_jdk
++# (detected as JDK 25 on Ubuntu 24.04 s390x) so toolchain resolution succeeds.
++config_setting(
++    name = "remotejdk25_s390x_prefix_version_setting",
++    values = {"java_runtime_version": "remotejdk_25"},
++    visibility = ["//visibility:private"],
++)
++
++config_setting(
++    name = "remotejdk25_s390x_version_setting",
++    values = {"java_runtime_version": "25"},
++    visibility = ["//visibility:private"],
++)
++
++alias(
++    name = "remotejdk25_s390x_version_or_prefix_setting",
++    actual = select({
++        ":remotejdk25_s390x_version_setting": ":remotejdk25_s390x_version_setting",
++        "//conditions:default": ":remotejdk25_s390x_prefix_version_setting",
++    }),
++    visibility = ["//visibility:private"],
++)
++
++toolchain(
++    name = "remotejdk25_linux_s390x",
++    target_compatible_with = ["@platforms//os:linux", "@platforms//cpu:s390x"],
++    target_settings = [":remotejdk25_s390x_version_or_prefix_setting"],
++    toolchain_type = "@bazel_tools//tools/jdk:runtime_toolchain_type",
++    toolchain = "@local_jdk//:jdk",
++)
++
+ java_runtime_version_alias(
+     name = "jdk_8",
+     runtime_version = "8",
