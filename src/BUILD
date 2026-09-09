@@ -226,11 +226,13 @@ genrule(
         ":embedded_jdk_vanilla",
         ":jdeps_modules.golden",
     ] + select({
+        "//src/conditions:linux_s390x": ["@openjdk_linux_s390x_jmods//file"],
         "//src/conditions:windows_arm64": ["@openjdk_win_arm64_jmods//file"],
         "//conditions:default": [],
     }),
     outs = ["minimal_jdk.zip"],
     cmd = "$(location :minimize_jdk) $(location :jdk_for_jlink) $(location :embedded_jdk_vanilla) $(location :jdeps_modules.golden) $@" + select({
+        "//src/conditions:linux_s390x": " $(location @openjdk_linux_s390x_jmods//file)",
         "//src/conditions:windows_arm64": " $(location @openjdk_win_arm64_jmods//file)",
         "//conditions:default": "",
     }),
@@ -247,11 +249,13 @@ genrule(
         ":embedded_jdk_vanilla",
         ":jdeps_modules.golden",
     ] + select({
+        "//src/conditions:linux_s390x": ["@openjdk_linux_s390x_jmods//file"],
         "//src/conditions:windows_arm64": ["@openjdk_win_arm64_jmods//file"],
         "//conditions:default": [],
     }),
     outs = ["allmodules_jdk.zip"],
     cmd = "$(location :minimize_jdk) --allmodules $(location :jdk_for_jlink) $(location :embedded_jdk_vanilla) $(location :jdeps_modules.golden) $@" + select({
+        "//src/conditions:linux_s390x": " $(location @openjdk_linux_s390x_jmods//file)",
         "//src/conditions:windows_arm64": " $(location @openjdk_win_arm64_jmods//file)",
         "//conditions:default": "",
     }),

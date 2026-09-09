@@ -142,6 +142,12 @@ def embedded_jdk_repositories():
     # These are needed for cross-jlinking (minimizing the JDK on a different platform).
     # https://adoptium.net/news/2025/08/eclipse-temurin-jdk24-JEP493-enabled
     http_file(
+        name = "openjdk_linux_s390x_jmods",
+        integrity = "sha256-q+ojr8SqMWGRMZWCfyBcJw6zaJTCfjhoLHEaTDmAJ4k=",
+        downloaded_file_path = "temurin-linux-s390x-jmods.tar.gz",
+        url = "https://github.com/adoptium/temurin25-binaries/releases/download/jdk-25.0.2%2B10/OpenJDK25U-jmods_s390x_linux_hotspot_25.0.2_10.tar.gz",
+    )
+    http_file(
         name = "openjdk_win_arm64_jmods",
         integrity = "sha256-2rjwZCoUIYD7L9nLwLJindsYPkDMvpI4km5a9UlxFtg=",
         downloaded_file_path = "temurin-win-arm64-jmods.zip",
