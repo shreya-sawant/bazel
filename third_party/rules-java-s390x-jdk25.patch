@@ -1,6 +1,6 @@
 --- a/toolchains/BUILD
 +++ b/toolchains/BUILD
-@@ -416,6 +416,30 @@ java_runtime_version_alias(
+@@ -416,6 +416,37 @@ java_runtime_version_alias(
      visibility = ["//visibility:public"],
  )
  
