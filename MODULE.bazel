@@ -136,6 +136,15 @@ single_version_override(
     version = "1.76.0.bcr.1",
 )
 
+# s390x: rules_fuzzing 0.6.0 requires Python 3.8 which has no s390x binary;
+# remove 3.8 from SUPPORTED_PYTHON_VERSIONS.
+single_version_override(
+    module_name = "rules_fuzzing",
+    patch_strip = 1,
+    patches = ["//third_party:rules-fuzzing-remove-python38.patch"],
+    version = "0.6.0",
+)
+
 # s390x: rules_java 9.1.0 has no remotejdk_25 toolchain for s390x; patch
 # toolchains/BUILD to register @local_jdk (JDK 25) for that slot.
 single_version_override(

@@ -1,0 +1,10 @@
+--- a/MODULE.bazel
++++ b/MODULE.bazel
+@@ -41,7 +41,6 @@ SUPPORTED_PYTHON_VERSIONS = [
+ )
+ 
+ SUPPORTED_PYTHON_VERSIONS = [
+-    "3.8",
+     "3.9",
+     "3.10",
+     "3.11",
