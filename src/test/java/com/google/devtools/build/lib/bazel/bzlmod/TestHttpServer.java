@@ -82,6 +82,7 @@ public class TestHttpServer extends ExternalResource {
   }
 
   public String getUrl() {
-    return URI.create("http://[::1]:" + server.getAddress().getPort()).toString();
+    // s390x: use IPv4 loopback to avoid failures on hosts where IPv6 is disabled.
+    return URI.create("http://127.0.0.1:" + server.getAddress().getPort()).toString();
   }
 }
