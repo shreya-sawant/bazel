@@ -1,6 +1,6 @@
 --- a/internal/graalvm_bindist.bzl
 +++ b/internal/graalvm_bindist.bzl
-@@ -206,4 +206,36 @@ def _graal_bindist_repository_impl(ctx):
+@@ -206,4 +206,33 @@ def _graal_bindist_repository_impl(ctx):
  def _graal_bindist_repository_impl(ctx):
      """Implements the GraalVM repository rule (`graalvm_repository`)."""
  
