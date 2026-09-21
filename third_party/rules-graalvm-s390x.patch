@@ -1,5 +1,3 @@
-diff --git a/internal/graalvm_bindist.bzl b/internal/graalvm_bindist.bzl
-index 0000000..0000000 100644
 --- a/internal/graalvm_bindist.bzl
 +++ b/internal/graalvm_bindist.bzl
 @@ -80,10 +80,10 @@ def _get_platform(ctx, newdist):
@@ -17,36 +15,3 @@ index 0000000..0000000 100644
      else:
          fail("Unsupported operating system: " + ctx.os.name)
  
-@@ -207,3 +207,35 @@ def _graal_bindist_repository_impl(ctx):
-     """Implements the GraalVM repository rule (`graalvm_repository`)."""
- 
-+    # s390x: GraalVM CE/Oracle has no s390x distribution. Create a stub
-+    # repository so the fetch succeeds. Targets in this repo are non-functional;
-+    # any attempt to actually build a GraalVM native image on s390x will fail.
-+    _supported_arches = ["x86_64", "amd64", "aarch64"]
-+    if ctx.os.arch not in _supported_arches:
-+        ctx.file(
-+            "native-image",
-+            "#!/bin/bash\necho 'GraalVM native-image is not available on {arch}' >&2\nexit 1\n".format(arch = ctx.os.arch),
-+            executable = True,
-+        )
-+        ctx.file(
-+            "BUILD.bazel",
-+            """package(default_visibility = ["//visibility:public"])
-+exports_files(["native-image"])
-+filegroup(name = "files", srcs = [])
-+filegroup(name = "jre", srcs = [])
-+filegroup(name = "jdk-bin", srcs = [])
-+filegroup(name = "jdk-conf", srcs = [])
-+filegroup(name = "jdk-include", srcs = [])
-+filegroup(name = "jdk-lib", srcs = [])
-+load("@rules_java//java:defs.bzl", "java_runtime")
-+java_runtime(name = "jdk", srcs = [], version = 21)
-+load("@rules_graalvm//internal:toolchain.bzl", "graalvm_sdk")
-+graalvm_sdk(name = "gvm", native_image_bin = ":native-image", gvm_files = ":files")
-+""",
-+        )
-+        ctx.file("WORKSPACE.bazel", "workspace(name = \"{name}\")\n".format(name = ctx.name))
-+        return
-+
-     if ctx.attr.distribution == None or _detect_older_gvm_version(ctx):

@@ -70,8 +70,8 @@ single_version_override(
 )
 
 # TODO(pcloudy): Remove once the next version of rules_graalvm is available.
-# s390x: add rules-graalvm-s390x.patch to guard arch_labels dict access and
-# provide a stub repository for unsupported architectures.
+# s390x: add two patches to guard arch_labels dict access and provide a stub
+# repository for unsupported architectures (one hunk each, Bazel constraint).
 single_version_override(
     module_name = "rules_graalvm",
     patch_strip = 1,
@@ -81,6 +81,7 @@ single_version_override(
         "//third_party:rules_graalvm_load_fix.patch",
         "//third_party:rules_graalvm_bazel9_fixes.patch",
         "//third_party:rules-graalvm-s390x.patch",
+        "//third_party:rules-graalvm-s390x-stub.patch",
     ],
 )
 
