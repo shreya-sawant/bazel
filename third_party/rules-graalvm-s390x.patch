@@ -1,3 +1,5 @@
+diff --git a/internal/graalvm_bindist.bzl b/internal/graalvm_bindist.bzl
+index 0000000..0000000 100644
 --- a/internal/graalvm_bindist.bzl
 +++ b/internal/graalvm_bindist.bzl
 @@ -80,10 +80,10 @@ def _get_platform(ctx, newdist):
@@ -15,7 +17,7 @@
      else:
          fail("Unsupported operating system: " + ctx.os.name)
  
-@@ -207,6 +207,33 @@ def _graal_bindist_repository_impl(ctx):
+@@ -207,3 +207,35 @@ def _graal_bindist_repository_impl(ctx):
      """Implements the GraalVM repository rule (`graalvm_repository`)."""
  
 +    # s390x: GraalVM CE/Oracle has no s390x distribution. Create a stub
