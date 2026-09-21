@@ -33,6 +33,8 @@ public class NativeSslTest {
   public void nativeSslPresent() throws Exception {
     // Skip the test on platforms where native SSL is not available.
     assumeTrue(OS_WITH_NATIVE_SSL.contains(OS.getCurrent()));
+    // Skip on s390x: netty-tcnative-boringssl-static has no s390x native library.
+    assumeTrue(!"s390x".equals(System.getProperty("os.arch")));
 
     SslContextBuilder.forClient().sslProvider(SslProvider.OPENSSL).build();
   }

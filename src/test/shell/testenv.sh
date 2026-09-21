@@ -307,6 +307,15 @@ build --tool_java_runtime_version=21
 ${EXTRA_BAZELRC:-}
 EOF
 
+  # s390x: remotejdk_21 and remotejdk_25 have no upstream s390x binary; use
+  # local_jdk (the system JDK auto-detected by Bazel) instead.
+  if [[ "$(uname -m)" == "s390x" ]]; then
+    cat >> "$TEST_TMPDIR/bazelrc" <<EOF
+build --java_runtime_version=local_jdk
+build --tool_java_runtime_version=local_jdk
+EOF
+  fi
+
   if [[ "$RUNNING_IN_BAZEL_SANDBOX" == 1 ]]; then
     # If both the outer and the inner Bazel instances use the Linux sandbox,
     # $TEST_TMPDIR for the outer one will be under /tmp/bazel-working-directory.

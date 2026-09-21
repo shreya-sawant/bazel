@@ -23,7 +23,12 @@ source "${CURRENT_DIR}/../integration_test_setup.sh" \
 
 # should match the java_runtime of the default Java (compilation) toolchains
 # registered by rules_java.
-DEFAULT_JAVA_RUNTIME_VERSION="remotejdk25"
+# s390x: remotejdk25 has no upstream binary; local_jdk is used instead.
+if [[ "$(uname -m)" == "s390x" ]]; then
+  DEFAULT_JAVA_RUNTIME_VERSION="local_jdk"
+else
+  DEFAULT_JAVA_RUNTIME_VERSION="remotejdk25"
+fi
 
 function test_server_javabase() {
   mkdir -p test_server_javabase/bin

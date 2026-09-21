@@ -70,6 +70,8 @@ single_version_override(
 )
 
 # TODO(pcloudy): Remove once the next version of rules_graalvm is available.
+# s390x: add rules-graalvm-s390x.patch to guard arch_labels dict access and
+# provide a stub repository for unsupported architectures.
 single_version_override(
     module_name = "rules_graalvm",
     patch_strip = 1,
@@ -78,6 +80,7 @@ single_version_override(
         "//third_party:rules_graalvm_unicode.patch",
         "//third_party:rules_graalvm_load_fix.patch",
         "//third_party:rules_graalvm_bazel9_fixes.patch",
+        "//third_party:rules-graalvm-s390x.patch",
     ],
 )
 
@@ -134,15 +137,6 @@ single_version_override(
         "//third_party:grpc-memory-request-string.patch",
     ],
     version = "1.76.0.bcr.1",
-)
-
-# s390x: rules_fuzzing 0.6.0 requires Python 3.8 which has no s390x binary;
-# remove 3.8 from SUPPORTED_PYTHON_VERSIONS.
-single_version_override(
-    module_name = "rules_fuzzing",
-    patch_strip = 1,
-    patches = ["//third_party:rules-fuzzing-remove-python38.patch"],
-    version = "0.6.0",
 )
 
 # s390x: rules_java 9.1.0 has no remotejdk_25 toolchain for s390x; patch
@@ -393,7 +387,6 @@ use_repo(
     "openjdk_linux_ppc64le_vanilla",
     "openjdk_linux_riscv64_vanilla",
     "openjdk_linux_s390x_vanilla",
-    "openjdk_linux_s390x_jmods",
     "openjdk_linux_vanilla",
     "openjdk_macos_aarch64_vanilla",
     "openjdk_macos_x86_64_vanilla",

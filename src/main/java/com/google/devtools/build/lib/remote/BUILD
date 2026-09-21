@@ -309,3 +309,17 @@ java_library(
     name = "store",
     srcs = ["Store.java"],
 )
+
+
+# s390x: CombinedCache.java and GrpcCacheClient.java are compiled into :remote
+# (via glob). These alias targets let ChunkedTransferBenchmark reference them
+# by name without duplicating source compilation.
+java_library(
+    name = "combined_cache",
+    exports = [":remote"],
+)
+
+java_library(
+    name = "grpc_cache_client",
+    exports = [":remote"],
+)
