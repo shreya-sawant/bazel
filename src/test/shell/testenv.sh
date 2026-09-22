@@ -606,7 +606,7 @@ function add_rules_java() {
       cat > "${ws_root}/patches/rules-java-s390x-jdk25.patch" << 'PATCHEOF'
 --- a/toolchains/BUILD
 +++ b/toolchains/BUILD
-@@ -416,6 +416,37 @@ java_runtime_version_alias(
+@@ -416,6 +416,36 @@ java_runtime_version_alias(
      visibility = ["//visibility:public"],
  )
  
@@ -646,7 +646,7 @@ function add_rules_java() {
 PATCHEOF
     fi
     # Append the override only once (setup_module_dot_bazel may have already done it).
-    if ! grep -q 'single_version_override.*rules_java' "$1" 2>/dev/null; then
+    if ! grep -q 'rules-java-s390x-jdk25' "$1" 2>/dev/null; then
       cat >> "$1" << 'OVERRIDEEOF'
 single_version_override(
     module_name = "rules_java",
@@ -711,7 +711,7 @@ EOF
       cat > "${ws_root}/patches/rules-java-s390x-jdk25.patch" << 'PATCHEOF'
 --- a/toolchains/BUILD
 +++ b/toolchains/BUILD
-@@ -416,6 +416,37 @@ java_runtime_version_alias(
+@@ -416,6 +416,36 @@ java_runtime_version_alias(
      visibility = ["//visibility:public"],
  )
  
@@ -751,7 +751,7 @@ EOF
 PATCHEOF
     fi
     # Append the override only once (guard against re-entry via cleanup_workspace).
-    if ! grep -q 'single_version_override.*rules_java' "${module_dot_bazel}" 2>/dev/null; then
+    if ! grep -q 'rules-java-s390x-jdk25' "${module_dot_bazel}" 2>/dev/null; then
       cat >> "${module_dot_bazel}" << 'OVERRIDEEOF'
 single_version_override(
     module_name = "rules_java",

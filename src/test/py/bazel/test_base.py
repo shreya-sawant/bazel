@@ -166,6 +166,75 @@ class TestBase(absltest.TestCase):
         ],
         mode='a',
     )
+    # s390x: rules_java@9.1.0 has no remotejdk_25 toolchain for s390x.
+    # Inject a single_version_override with a patch so inner Bazel instances
+    # can resolve remotejdk_25 via @local_jdk.
+    import platform as _platform
+    if module == 'rules_java' and _platform.machine() == 's390x' and not path:
+      module_dot_bazel = self.Path('MODULE.bazel')
+      ws_root = os.path.dirname(module_dot_bazel)
+      patches_dir = os.path.join(ws_root, 'patches')
+      os.makedirs(patches_dir, exist_ok=True)
+      build_file = os.path.join(patches_dir, 'BUILD')
+      if not os.path.exists(build_file):
+        with open(build_file, 'w', encoding='utf-8') as f:
+          f.write('exports_files(glob(["*.patch"]))\n')
+      patch_file = os.path.join(patches_dir, 'rules-java-s390x-jdk25.patch')
+      if not os.path.exists(patch_file):
+        with open(patch_file, 'w', encoding='utf-8') as f:
+          f.write(
+              '--- a/toolchains/BUILD\n'
+              '+++ b/toolchains/BUILD\n'
+              '@@ -416,6 +416,36 @@ java_runtime_version_alias(\n'
+              '     visibility = ["//visibility:public"],\n'
+              ' )\n'
+              ' \n'
+              '+# s390x: no upstream JDK 25 binary for s390x; register @local_jdk.\n'
+              '+config_setting(\n'
+              '+    name = "remotejdk25_s390x_prefix_version_setting",\n'
+              '+    values = {"java_runtime_version": "remotejdk_25"},\n'
+              '+    visibility = ["//visibility:private"],\n'
+              '+)\n'
+              '+\n'
+              '+config_setting(\n'
+              '+    name = "remotejdk25_s390x_version_setting",\n'
+              '+    values = {"java_runtime_version": "25"},\n'
+              '+    visibility = ["//visibility:private"],\n'
+              '+)\n'
+              '+\n'
+              '+alias(\n'
+              '+    name = "remotejdk25_s390x_version_or_prefix_setting",\n'
+              '+    actual = select({\n'
+              '+        ":remotejdk25_s390x_version_setting": ":remotejdk25_s390x_version_setting",\n'
+              '+        "//conditions:default": ":remotejdk25_s390x_prefix_version_setting",\n'
+              '+    }),\n'
+              '+    visibility = ["//visibility:private"],\n'
+              '+)\n'
+              '+\n'
+              '+toolchain(\n'
+              '+    name = "remotejdk25_linux_s390x",\n'
+              '+    target_compatible_with = ["@platforms//os:linux", "@platforms//cpu:s390x"],\n'
+              '+    target_settings = [":remotejdk25_s390x_version_or_prefix_setting"],\n'
+              '+    toolchain_type = "@bazel_tools//tools/jdk:runtime_toolchain_type",\n'
+              '+    toolchain = "@local_jdk//:jdk",\n'
+              '+)\n'
+              '+\n'
+              ' java_runtime_version_alias(\n'
+              '     name = "jdk_8",\n'
+              '     runtime_version = "8",\n'
+          )
+      # Append override only once
+      with open(module_dot_bazel, 'r', encoding='utf-8') as f:
+        content = f.read()
+      if 'rules-java-s390x-jdk25' not in content:
+        with open(module_dot_bazel, 'a', encoding='utf-8') as f:
+          f.write(
+              'single_version_override(\n'
+              '    module_name = "rules_java",\n'
+              '    patches = ["//patches:rules-java-s390x-jdk25.patch"],\n'
+              '    patch_strip = 1,\n'
+              ')\n'
+          )
 
   def tearDown(self):
     self.RunBazel(['shutdown'])
