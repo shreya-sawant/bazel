@@ -1,17 +1,36 @@
 --- a/internal/graalvm_bindist.bzl
 +++ b/internal/graalvm_bindist.bzl
-@@ -206,4 +206,33 @@ def _graal_bindist_repository_impl(ctx):
+@@ -206,4 +206,52 @@ def _graal_bindist_repository_impl(ctx):
  def _graal_bindist_repository_impl(ctx):
      """Implements the GraalVM repository rule (`graalvm_repository`)."""
  
 +    # s390x: GraalVM CE/Oracle has no s390x distribution. Create a stub
-+    # repository so the fetch succeeds. Targets in this repo are non-functional;
-+    # any attempt to actually build a GraalVM native image on s390x will fail.
++    # repository so the fetch succeeds and native_image() build steps succeed.
++    # The produced "binary" is a stub script that exits 1 at run time, but the
++    # build step itself succeeds so that java_tools_prebuilt.zip can be built.
 +    _supported_arches = ["x86_64", "amd64", "aarch64"]
 +    if ctx.os.arch not in _supported_arches:
 +        ctx.file(
 +            "native-image",
-+            "#!/bin/bash\necho 'GraalVM native-image is not available on {arch}' >&2\nexit 1\n".format(arch = ctx.os.arch),
++            # Parse -H:Path=<dir> and -H:Name=<name> from args and write a stub
++            # executable to <dir>/<name> so the build action succeeds.
++            "#!/bin/bash\n"
++            "out_dir=''\n"
++            "out_name=''\n"
++            "for arg in \"$@\"; do\n"
++            "  case \"$arg\" in\n"
++            "    -H:Path=*) out_dir=\"${arg#-H:Path=}\" ;;\n"
++            "    -H:Name=*) out_name=\"${arg#-H:Name=}\" ;;\n"
++            "  esac\n"
++            "done\n"
++            "if [[ -n \"$out_dir\" && -n \"$out_name\" ]]; then\n"
++            "  mkdir -p \"$out_dir\"\n"
++            "  printf '#!/bin/bash\\necho \"GraalVM native-image stub (s390x)\" >&2\\nexit 1\\n' > \"$out_dir/$out_name\"\n"
++            "  chmod +x \"$out_dir/$out_name\"\n"
++            "  exit 0\n"
++            "fi\n"
++            "echo 'GraalVM native-image is not available on {arch}' >&2\n"
++            "exit 1\n".format(arch = ctx.os.arch),
 +            executable = True,
 +        )
 +        ctx.file(

@@ -590,6 +590,72 @@ function add_rules_shell() {
 
 function add_rules_java() {
   add_bazel_dep "rules_java" "$1"
+  # s390x: rules_java@9.1.0 has no remotejdk_25 toolchain for s390x; the
+  # default Java compilation toolchain uses remotejdk_25 as its java_runtime,
+  # and toolchain resolution fails when analyzing it on s390x.
+  # Inject a single_version_override with a patch that registers @local_jdk as
+  # remotejdk_25 on s390x. Only valid in the root module (MODULE.bazel).
+  if [[ "$(uname -m)" == "s390x" && "$1" == "MODULE.bazel" ]]; then
+    local ws_root
+    ws_root="$(dirname "$(realpath "$1")")"
+    mkdir -p "${ws_root}/patches"
+    if [[ ! -f "${ws_root}/patches/BUILD" ]]; then
+      printf 'exports_files(glob(["*.patch"]))\n' > "${ws_root}/patches/BUILD"
+    fi
+    if [[ ! -f "${ws_root}/patches/rules-java-s390x-jdk25.patch" ]]; then
+      cat > "${ws_root}/patches/rules-java-s390x-jdk25.patch" << 'PATCHEOF'
+--- a/toolchains/BUILD
++++ b/toolchains/BUILD
+@@ -416,6 +416,37 @@ java_runtime_version_alias(
+     visibility = ["//visibility:public"],
+ )
+ 
++# s390x: no upstream JDK 25 binary for s390x; register @local_jdk.
++config_setting(
++    name = "remotejdk25_s390x_prefix_version_setting",
++    values = {"java_runtime_version": "remotejdk_25"},
++    visibility = ["//visibility:private"],
++)
++
++config_setting(
++    name = "remotejdk25_s390x_version_setting",
++    values = {"java_runtime_version": "25"},
++    visibility = ["//visibility:private"],
++)
++
++alias(
++    name = "remotejdk25_s390x_version_or_prefix_setting",
++    actual = select({
++        ":remotejdk25_s390x_version_setting": ":remotejdk25_s390x_version_setting",
++        "//conditions:default": ":remotejdk25_s390x_prefix_version_setting",
++    }),
++    visibility = ["//visibility:private"],
++)
++
++toolchain(
++    name = "remotejdk25_linux_s390x",
++    target_compatible_with = ["@platforms//os:linux", "@platforms//cpu:s390x"],
++    target_settings = [":remotejdk25_s390x_version_or_prefix_setting"],
++    toolchain_type = "@bazel_tools//tools/jdk:runtime_toolchain_type",
++    toolchain = "@local_jdk//:jdk",
++)
++
+ java_runtime_version_alias(
+     name = "jdk_8",
+     runtime_version = "8",
+PATCHEOF
+    fi
+    # Append the override only once (setup_module_dot_bazel may have already done it).
+    if ! grep -q 'single_version_override.*rules_java' "$1" 2>/dev/null; then
+      cat >> "$1" << 'OVERRIDEEOF'
+single_version_override(
+    module_name = "rules_java",
+    patches = ["//patches:rules-java-s390x-jdk25.patch"],
+    patch_strip = 1,
+)
+OVERRIDEEOF
+    fi
+  fi
 }
 
 function add_rules_python() {
@@ -629,6 +695,72 @@ function setup_module_dot_bazel() {
 module(name = 'test')
 EOF
   cp -f $(rlocation io_bazel/src/test/tools/bzlmod/MODULE.bazel.lock) "$(dirname ${module_dot_bazel})/MODULE.bazel.lock"
+  # s390x: every test workspace needs a single_version_override for rules_java
+  # so that the inner Bazel can resolve remotejdk_25 toolchains via @local_jdk.
+  # The default java compilation toolchain (for all source_versions) uses
+  # remotejdk_25 as its java_runtime; without this patch, toolchain resolution
+  # fails for ANY Java target on s390x, including @bazel_tools coverage tools.
+  if [[ "$(uname -m)" == "s390x" && "${module_dot_bazel}" == "MODULE.bazel" ]]; then
+    local ws_root
+    ws_root="$(dirname "$(realpath "${module_dot_bazel}")")"
+    mkdir -p "${ws_root}/patches"
+    if [[ ! -f "${ws_root}/patches/BUILD" ]]; then
+      printf 'exports_files(glob(["*.patch"]))\n' > "${ws_root}/patches/BUILD"
+    fi
+    if [[ ! -f "${ws_root}/patches/rules-java-s390x-jdk25.patch" ]]; then
+      cat > "${ws_root}/patches/rules-java-s390x-jdk25.patch" << 'PATCHEOF'
+--- a/toolchains/BUILD
++++ b/toolchains/BUILD
+@@ -416,6 +416,37 @@ java_runtime_version_alias(
+     visibility = ["//visibility:public"],
+ )
+ 
++# s390x: no upstream JDK 25 binary for s390x; register @local_jdk.
++config_setting(
++    name = "remotejdk25_s390x_prefix_version_setting",
++    values = {"java_runtime_version": "remotejdk_25"},
++    visibility = ["//visibility:private"],
++)
++
++config_setting(
++    name = "remotejdk25_s390x_version_setting",
++    values = {"java_runtime_version": "25"},
++    visibility = ["//visibility:private"],
++)
++
++alias(
++    name = "remotejdk25_s390x_version_or_prefix_setting",
++    actual = select({
++        ":remotejdk25_s390x_version_setting": ":remotejdk25_s390x_version_setting",
++        "//conditions:default": ":remotejdk25_s390x_prefix_version_setting",
++    }),
++    visibility = ["//visibility:private"],
++)
++
++toolchain(
++    name = "remotejdk25_linux_s390x",
++    target_compatible_with = ["@platforms//os:linux", "@platforms//cpu:s390x"],
++    target_settings = [":remotejdk25_s390x_version_or_prefix_setting"],
++    toolchain_type = "@bazel_tools//tools/jdk:runtime_toolchain_type",
++    toolchain = "@local_jdk//:jdk",
++)
++
+ java_runtime_version_alias(
+     name = "jdk_8",
+     runtime_version = "8",
+PATCHEOF
+    fi
+    # Append the override only once (guard against re-entry via cleanup_workspace).
+    if ! grep -q 'single_version_override.*rules_java' "${module_dot_bazel}" 2>/dev/null; then
+      cat >> "${module_dot_bazel}" << 'OVERRIDEEOF'
+single_version_override(
+    module_name = "rules_java",
+    patches = ["//patches:rules-java-s390x-jdk25.patch"],
+    patch_strip = 1,
+)
+OVERRIDEEOF
+    fi
+  fi
   echo $module_dot_bazel
 }
 
