@@ -1,55 +1,51 @@
 --- a/internal/graalvm_bindist.bzl
 +++ b/internal/graalvm_bindist.bzl
-@@ -206,4 +206,52 @@ def _graal_bindist_repository_impl(ctx):
+@@ -206,4 +206,48 @@ def _graal_bindist_repository_impl(ctx):
  def _graal_bindist_repository_impl(ctx):
      """Implements the GraalVM repository rule (`graalvm_repository`)."""
  
 +    # s390x: GraalVM CE/Oracle has no s390x distribution. Create a stub
 +    # repository so the fetch succeeds and native_image() build steps succeed.
-+    # The produced "binary" is a stub script that exits 1 at run time, but the
-+    # build step itself succeeds so that java_tools_prebuilt.zip can be built.
 +    _supported_arches = ["x86_64", "amd64", "aarch64"]
 +    if ctx.os.arch not in _supported_arches:
-+        ctx.file(
-+            "native-image",
-+            # Parse -H:Path=<dir> and -H:Name=<name> from args and write a stub
-+            # executable to <dir>/<name> so the build action succeeds.
-+            "#!/bin/bash\n"
-+            "out_dir=''\n"
-+            "out_name=''\n"
-+            "for arg in \"$@\"; do\n"
-+            "  case \"$arg\" in\n"
-+            "    -H:Path=*) out_dir=\"${arg#-H:Path=}\" ;;\n"
-+            "    -H:Name=*) out_name=\"${arg#-H:Name=}\" ;;\n"
-+            "  esac\n"
-+            "done\n"
-+            "if [[ -n \"$out_dir\" && -n \"$out_name\" ]]; then\n"
-+            "  mkdir -p \"$out_dir\"\n"
-+            "  printf '#!/bin/bash\\necho \"GraalVM native-image stub (s390x)\" >&2\\nexit 1\\n' > \"$out_dir/$out_name\"\n"
-+            "  chmod +x \"$out_dir/$out_name\"\n"
-+            "  exit 0\n"
-+            "fi\n"
-+            "echo 'GraalVM native-image is not available on {arch}' >&2\n"
-+            "exit 1\n".format(arch = ctx.os.arch),
-+            executable = True,
++        # Build the stub script content using explicit concatenation (Bazel 9
++        # Starlark forbids implicit adjacent-string concatenation).
++        stub_script = (
++            "#!/bin/bash\n" +
++            "out_dir=''\n" +
++            "out_name=''\n" +
++            "for arg in \"$@\"; do\n" +
++            "  case \"$arg\" in\n" +
++            "    -H:Path=*) out_dir=\"${arg#-H:Path=}\" ;;\n" +
++            "    -H:Name=*) out_name=\"${arg#-H:Name=}\" ;;\n" +
++            "  esac\n" +
++            "done\n" +
++            "if [[ -n \"$out_dir\" && -n \"$out_name\" ]]; then\n" +
++            "  mkdir -p \"$out_dir\"\n" +
++            "  printf '#!/bin/bash\\necho stub >&2\\nexit 1\\n' > \"$out_dir/$out_name\"\n" +
++            "  chmod +x \"$out_dir/$out_name\"\n" +
++            "  exit 0\n" +
++            "fi\n" +
++            "echo 'GraalVM native-image is not available on " + ctx.os.arch + "' >&2\n" +
++            "exit 1\n"
 +        )
++        ctx.file("native-image", stub_script, executable = True)
 +        ctx.file(
 +            "BUILD.bazel",
-+            """package(default_visibility = ["//visibility:public"])
-+exports_files(["native-image"])
-+filegroup(name = "files", srcs = [])
-+filegroup(name = "jre", srcs = [])
-+filegroup(name = "jdk-bin", srcs = [])
-+filegroup(name = "jdk-conf", srcs = [])
-+filegroup(name = "jdk-include", srcs = [])
-+filegroup(name = "jdk-lib", srcs = [])
-+load("@rules_java//java:defs.bzl", "java_runtime")
-+java_runtime(name = "jdk", srcs = [], version = 21)
-+load("@rules_graalvm//internal:toolchain.bzl", "graalvm_sdk")
-+graalvm_sdk(name = "gvm", native_image_bin = ":native-image", gvm_files = ":files")
-+""",
++            "package(default_visibility = [\"//visibility:public\"])\n" +
++            "exports_files([\"native-image\"])\n" +
++            "filegroup(name = \"files\", srcs = [])\n" +
++            "filegroup(name = \"jre\", srcs = [])\n" +
++            "filegroup(name = \"jdk-bin\", srcs = [])\n" +
++            "filegroup(name = \"jdk-conf\", srcs = [])\n" +
++            "filegroup(name = \"jdk-include\", srcs = [])\n" +
++            "filegroup(name = \"jdk-lib\", srcs = [])\n" +
++            "load(\"@rules_java//java:defs.bzl\", \"java_runtime\")\n" +
++            "java_runtime(name = \"jdk\", srcs = [], version = 21)\n" +
++            "load(\"@rules_graalvm//internal:toolchain.bzl\", \"graalvm_sdk\")\n" +
++            "graalvm_sdk(name = \"gvm\", native_image_bin = \":native-image\", gvm_files = \":files\")\n",
 +        )
-+        ctx.file("WORKSPACE.bazel", "workspace(name = \"{name}\")\n".format(name = ctx.name))
++        ctx.file("WORKSPACE.bazel", "workspace(name = \"" + ctx.name + "\")\n")
 +        return
 +
      if ctx.attr.distribution == None or _detect_older_gvm_version(ctx):
