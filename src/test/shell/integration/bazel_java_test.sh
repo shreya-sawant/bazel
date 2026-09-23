@@ -23,9 +23,10 @@ source "${CURRENT_DIR}/../integration_test_setup.sh" \
 
 # should match the java_runtime of the default Java (compilation) toolchains
 # registered by rules_java.
-# s390x: remotejdk25 has no upstream binary; local_jdk is used instead.
+# s390x: the default testenv bazelrc sets --java_runtime_version=21 which
+# resolves to remotejdk21_linux_s390x (an s390x JDK21 binary that exists).
 if [[ "$(uname -m)" == "s390x" ]]; then
-  DEFAULT_JAVA_RUNTIME_VERSION="local_jdk"
+  DEFAULT_JAVA_RUNTIME_VERSION="remotejdk21"
 else
   DEFAULT_JAVA_RUNTIME_VERSION="remotejdk25"
 fi

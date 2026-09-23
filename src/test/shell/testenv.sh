@@ -307,14 +307,12 @@ build --tool_java_runtime_version=21
 ${EXTRA_BAZELRC:-}
 EOF
 
-  # s390x: remotejdk_21 and remotejdk_25 have no upstream s390x binary; use
-  # local_jdk (the system JDK auto-detected by Bazel) instead.
-  if [[ "$(uname -m)" == "s390x" ]]; then
-    cat >> "$TEST_TMPDIR/bazelrc" <<EOF
-build --java_runtime_version=local_jdk
-build --tool_java_runtime_version=local_jdk
-EOF
-  fi
+  # s390x: remotejdk_25 has no upstream s390x binary. The toolchain is
+  # registered via a single_version_override patch injected into each test
+  # workspace's MODULE.bazel (see setup_module_dot_bazel / add_rules_java).
+  # We do NOT override java_runtime_version here because remotejdk_21 DOES
+  # have an s390x binary; overriding to local_jdk (JDK25) with
+  # --java_language_version=21 causes a javac version mismatch.
 
   if [[ "$RUNNING_IN_BAZEL_SANDBOX" == 1 ]]; then
     # If both the outer and the inner Bazel instances use the Linux sandbox,
