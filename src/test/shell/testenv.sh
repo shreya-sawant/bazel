@@ -563,45 +563,22 @@ function get_version_from_default_lock_file() {
   fi
 }
 
-function add_bazel_dep() {
-  version=$(get_version_from_default_lock_file "$1")
-  cat >> "$2" <<EOF
-bazel_dep(name = "$1", version = "$version")
-EOF
-}
-
-function add_platforms() {
-  add_bazel_dep "platforms" "$1"
-}
-
-function add_bazel_skylib() {
-  add_bazel_dep "bazel_skylib" "$1"
-}
-
-function add_rules_cc() {
-  add_bazel_dep "rules_cc" "$1"
-}
-
-function add_rules_shell() {
-  add_bazel_dep "rules_shell" "$1"
-}
-
-function add_rules_java() {
-  add_bazel_dep "rules_java" "$1"
-  # s390x: rules_java@9.1.0 has no remotejdk_25 toolchain for s390x; the
-  # default Java compilation toolchain uses remotejdk_25 as its java_runtime,
-  # and toolchain resolution fails when analyzing it on s390x.
-  # Inject a single_version_override with a patch that registers @local_jdk as
-  # remotejdk_25 on s390x. Only valid in the root module (MODULE.bazel).
-  if [[ "$(uname -m)" == "s390x" && "$1" == "MODULE.bazel" ]]; then
-    local ws_root
-    ws_root="$(dirname "$(realpath "$1")")"
-    mkdir -p "${ws_root}/patches"
-    if [[ ! -f "${ws_root}/patches/BUILD" ]]; then
-      printf 'exports_files(glob(["*.patch"]))\n' > "${ws_root}/patches/BUILD"
-    fi
-    if [[ ! -f "${ws_root}/patches/rules-java-s390x-jdk25.patch" ]]; then
-      cat > "${ws_root}/patches/rules-java-s390x-jdk25.patch" << 'PATCHEOF'
+# s390x helper: inject the rules_java patch override into any MODULE.bazel.
+# Called from add_bazel_dep (covers add_rules_cc/shell/etc.) and from
+# setup_module_dot_bazel. Idempotent — skips if already injected.
+function _inject_s390x_rules_java_override() {
+  local target_file="$1"
+  if [[ "$(uname -m)" != "s390x" || "${target_file}" != "MODULE.bazel" ]]; then
+    return 0
+  fi
+  local ws_root
+  ws_root="$(dirname "$(realpath "${target_file}")")"
+  mkdir -p "${ws_root}/patches"
+  if [[ ! -f "${ws_root}/patches/BUILD" ]]; then
+    printf 'exports_files(glob(["*.patch"]))\n' > "${ws_root}/patches/BUILD"
+  fi
+  if [[ ! -f "${ws_root}/patches/rules-java-s390x-jdk25.patch" ]]; then
+    cat > "${ws_root}/patches/rules-java-s390x-jdk25.patch" << 'PATCHEOF'
 --- a/toolchains/BUILD
 +++ b/toolchains/BUILD
 @@ -416,6 +416,36 @@ java_runtime_version_alias(
@@ -642,18 +619,48 @@ function add_rules_java() {
      name = "jdk_8",
      runtime_version = "8",
 PATCHEOF
-    fi
-    # Append the override only once (setup_module_dot_bazel may have already done it).
-    if ! grep -q 'rules-java-s390x-jdk25' "$1" 2>/dev/null; then
-      cat >> "$1" << 'OVERRIDEEOF'
+  fi
+  # Append the single_version_override only once.
+  if ! grep -q 'rules-java-s390x-jdk25' "${target_file}" 2>/dev/null; then
+    cat >> "${target_file}" << 'OVERRIDEEOF'
 single_version_override(
     module_name = "rules_java",
     patches = ["//patches:rules-java-s390x-jdk25.patch"],
     patch_strip = 1,
 )
 OVERRIDEEOF
-    fi
   fi
+}
+
+function add_bazel_dep() {
+  version=$(get_version_from_default_lock_file "$1")
+  cat >> "$2" <<EOF
+bazel_dep(name = "$1", version = "$version")
+EOF
+  # s390x: ensure rules_java s390x override is present in every root MODULE.bazel,
+  # regardless of which dep triggered the add_bazel_dep call.
+  _inject_s390x_rules_java_override "$2"
+}
+
+function add_platforms() {
+  add_bazel_dep "platforms" "$1"
+}
+
+function add_bazel_skylib() {
+  add_bazel_dep "bazel_skylib" "$1"
+}
+
+function add_rules_cc() {
+  add_bazel_dep "rules_cc" "$1"
+}
+
+function add_rules_shell() {
+  add_bazel_dep "rules_shell" "$1"
+}
+
+function add_rules_java() {
+  add_bazel_dep "rules_java" "$1"
+  # _inject_s390x_rules_java_override is already called by add_bazel_dep above.
 }
 
 function add_rules_python() {
@@ -695,70 +702,7 @@ EOF
   cp -f $(rlocation io_bazel/src/test/tools/bzlmod/MODULE.bazel.lock) "$(dirname ${module_dot_bazel})/MODULE.bazel.lock"
   # s390x: every test workspace needs a single_version_override for rules_java
   # so that the inner Bazel can resolve remotejdk_25 toolchains via @local_jdk.
-  # The default java compilation toolchain (for all source_versions) uses
-  # remotejdk_25 as its java_runtime; without this patch, toolchain resolution
-  # fails for ANY Java target on s390x, including @bazel_tools coverage tools.
-  if [[ "$(uname -m)" == "s390x" && "${module_dot_bazel}" == "MODULE.bazel" ]]; then
-    local ws_root
-    ws_root="$(dirname "$(realpath "${module_dot_bazel}")")"
-    mkdir -p "${ws_root}/patches"
-    if [[ ! -f "${ws_root}/patches/BUILD" ]]; then
-      printf 'exports_files(glob(["*.patch"]))\n' > "${ws_root}/patches/BUILD"
-    fi
-    if [[ ! -f "${ws_root}/patches/rules-java-s390x-jdk25.patch" ]]; then
-      cat > "${ws_root}/patches/rules-java-s390x-jdk25.patch" << 'PATCHEOF'
---- a/toolchains/BUILD
-+++ b/toolchains/BUILD
-@@ -416,6 +416,36 @@ java_runtime_version_alias(
-     visibility = ["//visibility:public"],
- )
- 
-+# s390x: no upstream JDK 25 binary for s390x; register @local_jdk.
-+config_setting(
-+    name = "remotejdk25_s390x_prefix_version_setting",
-+    values = {"java_runtime_version": "remotejdk_25"},
-+    visibility = ["//visibility:private"],
-+)
-+
-+config_setting(
-+    name = "remotejdk25_s390x_version_setting",
-+    values = {"java_runtime_version": "25"},
-+    visibility = ["//visibility:private"],
-+)
-+
-+alias(
-+    name = "remotejdk25_s390x_version_or_prefix_setting",
-+    actual = select({
-+        ":remotejdk25_s390x_version_setting": ":remotejdk25_s390x_version_setting",
-+        "//conditions:default": ":remotejdk25_s390x_prefix_version_setting",
-+    }),
-+    visibility = ["//visibility:private"],
-+)
-+
-+toolchain(
-+    name = "remotejdk25_linux_s390x",
-+    target_compatible_with = ["@platforms//os:linux", "@platforms//cpu:s390x"],
-+    target_settings = [":remotejdk25_s390x_version_or_prefix_setting"],
-+    toolchain_type = "@bazel_tools//tools/jdk:runtime_toolchain_type",
-+    toolchain = "@local_jdk//:jdk",
-+)
-+
- java_runtime_version_alias(
-     name = "jdk_8",
-     runtime_version = "8",
-PATCHEOF
-    fi
-    # Append the override only once (guard against re-entry via cleanup_workspace).
-    if ! grep -q 'rules-java-s390x-jdk25' "${module_dot_bazel}" 2>/dev/null; then
-      cat >> "${module_dot_bazel}" << 'OVERRIDEEOF'
-single_version_override(
-    module_name = "rules_java",
-    patches = ["//patches:rules-java-s390x-jdk25.patch"],
-    patch_strip = 1,
-)
-OVERRIDEEOF
-    fi
-  fi
+  _inject_s390x_rules_java_override "${module_dot_bazel}"
   echo $module_dot_bazel
 }
 
