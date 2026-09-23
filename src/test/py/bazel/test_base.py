@@ -453,9 +453,16 @@ class TestBase(absltest.TestCase):
     if executable:
       os.chmod(abspath, stat.S_IRWXU)
     # s390x: re-inject rules_java override when MODULE.bazel is freshly written
-    # by ScratchFile with mode='w' (overwrites existing content).
+    # by ScratchFile with mode='w', BUT only when the workspace uses real BCR
+    # (not a local_path_override for bazel_tools). Workspaces that override
+    # bazel_tools bypass BCR entirely and rules_java is NOT in their dep graph;
+    # adding single_version_override for rules_java there causes:
+    # "the root module specifies overrides on nonexistent module(s): rules_java".
     if path == 'MODULE.bazel' and mode.startswith('w'):
-      self._inject_s390x_rules_java_override(abspath)
+      with open(abspath, 'r', encoding='utf-8') as _f:
+        _content = _f.read()
+      if 'local_path_override' not in _content or 'bazel_tools' not in _content:
+        self._inject_s390x_rules_java_override(abspath)
     return abspath
 
   def CopyFile(self, src_path, dst_path, executable=False):
