@@ -244,8 +244,15 @@ class TestBase(absltest.TestCase):
     )
     # s390x: inject the rules_java JDK-25 toolchain override for every dep
     # added to the root MODULE.bazel, not just when module == 'rules_java'.
+    # Skip for isolated workspaces that override bazel_tools locally (those
+    # don't have rules_java in their dep graph at all).
     if not path:
-      self._inject_s390x_rules_java_override(self.Path('MODULE.bazel'))
+      module_bazel_path = self.Path('MODULE.bazel')
+      if os.path.exists(module_bazel_path):
+        with open(module_bazel_path, 'r', encoding='utf-8') as _f:
+          _content = _f.read()
+        if 'local_path_override' not in _content or 'bazel_tools' not in _content:
+          self._inject_s390x_rules_java_override(module_bazel_path)
 
   def tearDown(self):
     self.RunBazel(['shutdown'])
