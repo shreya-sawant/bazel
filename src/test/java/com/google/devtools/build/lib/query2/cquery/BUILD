@@ -171,6 +171,8 @@ java_test(
     srcs = ["TransitionsOutputFormatterTest.java"],
     jvm_flags = [
         "-Djava.lang.Thread.allowVirtualThreads=true",
+        # s390x: smaller default stack; testDeepNestedLet needs deeper stack.
+        "-Xss4m",
     ],
     shard_count = 4,
     deps = [

@@ -18,6 +18,9 @@ java_test(
     srcs = glob(["*.java"]),
     jvm_flags = [
         "-Djava.lang.Thread.allowVirtualThreads=true",
+        # s390x: default stack size is smaller than x86; testDeepNestedLet uses
+        # 500-level recursion which overflows with the default 256k/512k stack.
+        "-Xss4m",
     ],
     shard_count = 10,
     deps = [
