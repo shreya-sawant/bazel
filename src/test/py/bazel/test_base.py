@@ -242,17 +242,11 @@ class TestBase(absltest.TestCase):
         ],
         mode='a',
     )
-    # s390x: inject the rules_java JDK-25 toolchain override for every dep
-    # added to the root MODULE.bazel, not just when module == 'rules_java'.
-    # Skip for isolated workspaces that override bazel_tools locally (those
-    # don't have rules_java in their dep graph at all).
+    # s390x: inject the rules_java JDK-25 toolchain override when adding any dep
+    # to the root MODULE.bazel. AddBazelDep is only used in BCR workspaces, so
+    # rules_java is always transitively available (safe to add the override).
     if not path:
-      module_bazel_path = self.Path('MODULE.bazel')
-      if os.path.exists(module_bazel_path):
-        with open(module_bazel_path, 'r', encoding='utf-8') as _f:
-          _content = _f.read()
-        if 'local_path_override' not in _content or 'bazel_tools' not in _content:
-          self._inject_s390x_rules_java_override(module_bazel_path)
+      self._inject_s390x_rules_java_override(self.Path('MODULE.bazel'))
 
   def tearDown(self):
     self.RunBazel(['shutdown'])
@@ -460,15 +454,17 @@ class TestBase(absltest.TestCase):
     if executable:
       os.chmod(abspath, stat.S_IRWXU)
     # s390x: re-inject rules_java override when MODULE.bazel is freshly written
-    # by ScratchFile with mode='w', BUT only when the workspace uses real BCR
-    # (not a local_path_override for bazel_tools). Workspaces that override
-    # bazel_tools bypass BCR entirely and rules_java is NOT in their dep graph;
-    # adding single_version_override for rules_java there causes:
-    # "the root module specifies overrides on nonexistent module(s): rules_java".
+    # by ScratchFile with mode='w', BUT only when the workspace has actual
+    # bazel_dep() declarations (indicating BCR is used and rules_java is likely
+    # a transitive dep). Skip:
+    #  - Empty MODULE.bazel or pure use_extension() modules (no bazel_dep)
+    #  - Workspaces with local_path_override(bazel_tools) — bypass BCR entirely
     if path == 'MODULE.bazel' and mode.startswith('w'):
       with open(abspath, 'r', encoding='utf-8') as _f:
         _content = _f.read()
-      if 'local_path_override' not in _content or 'bazel_tools' not in _content:
+      _has_dep = 'bazel_dep(' in _content
+      _isolated = 'local_path_override' in _content and 'bazel_tools' in _content
+      if _has_dep and not _isolated:
         self._inject_s390x_rules_java_override(abspath)
     return abspath
 
