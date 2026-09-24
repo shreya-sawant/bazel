@@ -60,7 +60,7 @@ common --tool_java_runtime_version=local_jdk
 # TODO: Remove this after migrating more code to use VarHandles.
 common --javacopt=-Xlint:-removal
 common --host_javacopt=-Xlint:-removal
-common --jvmopt=--sun-misc-unsafe-memory-access=allow
+# s390x: --sun-misc-unsafe-memory-access=allow removed (JDK 22-24 only; JDK 25 removed it)
 
 # User-specific .bazelrc
 try-import %workspace%/user.bazelrc

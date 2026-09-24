@@ -170,25 +170,14 @@ class TestBase(absltest.TestCase):
     if os.path.basename(module_bazel_path) != 'MODULE.bazel':
       return
     ws_root = os.path.dirname(module_bazel_path)
-    patches_dir = os.path.join(ws_root, 'patches')
+    # Use _patches (underscore prefix) so it does not appear in //p... tab
+    # completion and does NOT require .bazelignore (which breaks //label resolution).
+    patches_dir = os.path.join(ws_root, '_patches')
     os.makedirs(patches_dir, exist_ok=True)
     build_file = os.path.join(patches_dir, 'BUILD')
     if not os.path.exists(build_file):
       with open(build_file, 'w', encoding='utf-8') as f:
         f.write('exports_files(glob(["*.patch"]))\n')
-    # Add 'patches' to .bazelignore so the patches/ package does not appear
-    # in 'bazel query //...' or tab-completion results while remaining
-    # reachable via the explicit label //patches:file.patch used in
-    # single_version_override (explicit labels bypass .bazelignore).
-    bazelignore_path = os.path.join(ws_root, '.bazelignore')
-    try:
-      with open(bazelignore_path, 'r', encoding='utf-8') as _f:
-        _existing_ignore = _f.read()
-    except FileNotFoundError:
-      _existing_ignore = ''
-    if 'patches' not in _existing_ignore.splitlines():
-      with open(bazelignore_path, 'a', encoding='utf-8') as _f:
-        _f.write('patches\n')
     patch_file = os.path.join(patches_dir, 'rules-java-s390x-jdk25.patch')
     if not os.path.exists(patch_file):
       with open(patch_file, 'w', encoding='utf-8') as f:
@@ -241,7 +230,7 @@ class TestBase(absltest.TestCase):
         f.write(
             'single_version_override(\n'
             '    module_name = "rules_java",\n'
-            '    patches = ["//patches:rules-java-s390x-jdk25.patch"],\n'
+            '    patches = ["//_patches:rules-java-s390x-jdk25.patch"],\n'
             '    patch_strip = 1,\n'
             ')\n'
         )
